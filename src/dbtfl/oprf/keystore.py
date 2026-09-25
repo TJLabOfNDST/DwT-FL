@@ -1,7 +1,4 @@
-"""Persistent Ristretto255 secret handling for the KS OPRF service.
-
-KS OPRF 服务的持久化 Ristretto255 私钥处理。
-"""
+'Persistent Ristretto255 secret handling for the KS OPRF service.\nKS OPRF'
 
 from __future__ import annotations
 
@@ -18,54 +15,36 @@ from .ristretto255 import OPRF_SUITE_IDENTIFIER, random_scalar, validate_scalar
 
 
 KEY_FILE_VERSION: Final[int] = 2
-"""Version for the native Ristretto255 KS key file. / 原生 Ristretto255 KS 密钥文件版本。"""
+"""Version for the native Ristretto255 KS key file. /  Ristretto255 KS """
 
 GROUP_IDENTIFIER: Final[str] = OPRF_SUITE_IDENTIFIER
-"""Explicit cryptographic-suite binding for KS secrets. / KS 私钥的显式密码套件绑定。"""
+"""Explicit cryptographic-suite binding for KS secrets. / KS """
 
 
 class OprfKeyStoreError(RuntimeError):
-    """Raised when the KS secret file does not meet the selected suite contract.
-
-    当 KS 私钥文件不符合选定套件契约时引发。
-    """
+    'Raised when the KS secret file does not meet the selected suite contract.'
 
 
 @dataclass(frozen=True, slots=True)
 class OprfKeyMaterial:
-    """Validated 32-byte Ristretto255 scalar held only by the KS process.
-
-    仅由 KS 进程持有的、已验证的 32 字节 Ristretto255 标量。
-    """
+    'Validated 32-byte Ristretto255 scalar held only by the KS process.'
 
     scalar: bytes
 
     def __post_init__(self) -> None:
-        """Reject malformed scalar material at the persistence trust boundary.
-
-        在持久化信任边界拒绝格式错误的标量材料。
-        """
+        'Reject malformed scalar material at the persistence trust boundary.'
         validate_scalar(self.scalar)
 
 
 class OprfKeyStore:
-    """Load one Ristretto255 secret or atomically create a new local secret.
-
-    加载一份 Ristretto255 私钥，或原子地创建一份新的本地私钥。
-    """
+    'Load one Ristretto255 secret or atomically create a new local secret.'
 
     def __init__(self, path: str | Path) -> None:
-        """Bind the store to one concrete local filesystem path.
-
-        将存储绑定到一个具体的本地文件系统路径。
-        """
+        'Bind the store to one concrete local filesystem path.'
         self.path = Path(path)
 
     def load_or_create(self) -> OprfKeyMaterial:
-        """Load a valid key and never replace malformed or legacy material silently.
-
-        加载有效密钥，绝不静默替换格式错误或旧版材料。
-        """
+        'Load a valid key and never replace malformed or legacy material silently.'
         if self.path.exists():
             return self._load_existing()
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,40 +68,34 @@ class OprfKeyStore:
         return material
 
     def _load_existing(self) -> OprfKeyMaterial:
-        """Load and validate an existing Ristretto255 key without changing it.
-
-        加载并验证已有 Ristretto255 密钥，不修改文件。
-        """
+        'Load and validate an existing Ristretto255 key without changing it.'
         if self.path.is_symlink():
-            raise OprfKeyStoreError("KS key path must not be a symlink / KS 密钥路径不得为符号链接")
+            raise OprfKeyStoreError("KS key path must not be a symlink / KS ")
         try:
             parsed = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise OprfKeyStoreError("cannot read KS key file / 无法读取 KS 密钥文件") from error
+            raise OprfKeyStoreError("cannot read KS key file /  KS ") from error
         if not isinstance(parsed, dict):
-            raise OprfKeyStoreError("unsupported KS key-file schema / 不支持的 KS 密钥文件模式")
+            raise OprfKeyStoreError("unsupported KS key-file schema /  KS ")
         if parsed.get("version") == 1:
             raise OprfKeyStoreError(
                 "legacy MODP KS key cannot be used with Ristretto255; configure a new key path / "
-                "旧 MODP KS 密钥不能用于 Ristretto255；请配置新的密钥路径"
+                " MODP KS  Ristretto255"
             )
         if parsed.get("version") != KEY_FILE_VERSION or parsed.get("suite") != GROUP_IDENTIFIER:
-            raise OprfKeyStoreError("KS key is bound to another OPRF suite / KS 密钥绑定到另一 OPRF 套件")
+            raise OprfKeyStoreError("KS key is bound to another OPRF suite / KS  OPRF ")
         serialized_scalar = parsed.get("k_b64")
         if not isinstance(serialized_scalar, str):
-            raise OprfKeyStoreError("KS private scalar is invalid / KS 私有标量无效")
+            raise OprfKeyStoreError("KS private scalar is invalid / KS ")
         try:
             scalar = base64.b64decode(serialized_scalar.encode("ascii"), validate=True)
             return OprfKeyMaterial(scalar)
         except (UnicodeEncodeError, ValueError, binascii.Error, OprfValidationError) as error:
-            raise OprfKeyStoreError("KS private scalar is invalid / KS 私有标量无效") from error
+            raise OprfKeyStoreError("KS private scalar is invalid / KS ") from error
 
     @staticmethod
     def _serialize(material: OprfKeyMaterial) -> str:
-        """Serialize a suite-bound key without exposing derived public material.
-
-        序列化绑定套件的密钥，但不暴露派生公钥材料。
-        """
+        'Serialize a suite-bound key without exposing derived public material.'
         return json.dumps(
             {
                 "version": KEY_FILE_VERSION,

@@ -1,7 +1,4 @@
-"""Native Ristretto255 blind OPRF used by the DwT-FL protocol.
-
-DwT-FL 协议使用的原生 Ristretto255 盲 OPRF。
-"""
+'Native Ristretto255 blind OPRF used by the DwT-FL protocol.\nDwT-FL'
 
 from .client import OprfClient
 from .group14 import (

@@ -1,4 +1,4 @@
-"""Typed ctypes binding for the DwT-FL native index. / DwT-FL 原生索引的类型化 ctypes 绑定。"""
+'Typed ctypes binding for the DwT-FL native index. / DwT-FL'
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ from typing import Final
 
 
 LABEL_HEX_LENGTH: Final[int] = 512
-"""Canonical OPRF-label length in lowercase hexadecimal characters. / 小写十六进制规范 OPRF 标签长度。"""
+"""Canonical OPRF-label length in lowercase hexadecimal characters. /  OPRF """
 
 
 class NativeIndexError(RuntimeError):
-    """Raised when the native index rejects a valid binding operation. / 原生索引拒绝有效绑定操作时引发。"""
+    'Raised when the native index rejects a valid binding operation.'
 
 
 class TaskState(IntEnum):
-    """Native task-state values exposed without duplicating bit packing. / 无需复制位打包即可暴露的原生任务状态值。"""
+    'Native task-state values exposed without duplicating bit packing.'
 
     EMPTY = 0
     PENDING = 1
@@ -30,7 +30,7 @@ class TaskState(IntEnum):
 
 @dataclass(frozen=True, slots=True)
 class TaskSnapshot:
-    """Decoded task state returned by the native library. / 原生库返回的已解码任务状态。"""
+    'Decoded task state returned by the native library.'
 
     state: TaskState
     trainer: int
@@ -38,12 +38,12 @@ class TaskSnapshot:
 
 
 def _library_filename() -> str:
-    """Return the platform-specific shared-library filename. / 返回平台对应的动态库文件名。"""
+    'Return the platform-specific shared-library filename.'
     return "atomic_word.dll" if platform.system() == "Windows" else "atomic_word.so"
 
 
 def _default_library_path() -> Path:
-    """Locate a packaged or locally built native library. / 定位已打包或本地构建的原生动态库。"""
+    'Locate a packaged or locally built native library.'
     configured_path = os.environ.get("DBTFL_NATIVE_LIBRARY")
     if configured_path:
         return Path(configured_path).expanduser().resolve()
@@ -66,7 +66,7 @@ def _default_library_path() -> Path:
 
 
 def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
-    """Declare the complete stable C ABI used by Python. / 声明 Python 使用的完整稳定 C ABI。"""
+    'Declare the complete stable C ABI used by Python.'
     pointer = ctypes.c_void_p
     uint32 = ctypes.c_uint32
     uint64 = ctypes.c_uint64
@@ -137,27 +137,27 @@ def _configure_library(library: ctypes.CDLL) -> ctypes.CDLL:
 
 @lru_cache(maxsize=None)
 def _load_library(path: str) -> ctypes.CDLL:
-    """Load and configure one absolute library path once. / 每个绝对动态库路径只加载并配置一次。"""
+    'Load and configure one absolute library path once.'
     return _configure_library(ctypes.CDLL(path))
 
 
 def _canonical_label(label: str) -> bytes:
-    """Validate and encode one canonical protected label. / 验证并编码一个规范受保护标签。"""
+    'Validate and encode one canonical protected label.'
     if not isinstance(label, str):
-        raise TypeError("label must be a string / 标签必须是字符串")
+        raise TypeError("label must be a string / ")
     is_canonical = len(label) == LABEL_HEX_LENGTH and all(
         character in "0123456789abcdef" for character in label
     )
     if not is_canonical:
         raise ValueError(
             "label must contain exactly 512 lowercase hexadecimal characters / "
-            "标签必须恰好包含 512 个小写十六进制字符"
+            " 512 "
         )
     return label.encode("ascii")
 
 
 class NativeIndex:
-    """Own one native concurrent index through an explicit lifetime. / 通过显式生命周期持有一个原生并发索引。"""
+    'Own one native concurrent index through an explicit lifetime.'
 
     def __init__(
         self,
@@ -167,10 +167,10 @@ class NativeIndex:
         *,
         library_path: str | Path | None = None,
     ) -> None:
-        """Allocate an index with fixed capacities. / 使用固定容量分配索引。"""
+        'Allocate an index with fixed capacities.'
         if capacity <= 0 or max_clients <= 0 or max_edges <= 0:
             raise ValueError(
-                "all native-index capacities must be positive / 所有原生索引容量必须为正数"
+                "all native-index capacities must be positive / "
             )
         self.capacity = capacity
         self.max_clients = max_clients
@@ -183,51 +183,48 @@ class NativeIndex:
         self._library = _load_library(str(resolved_library))
         self._pointer = self._library.dbt_index_create(capacity, max_clients, max_edges)
         if not self._pointer:
-            raise NativeIndexError("native index allocation failed / 原生索引分配失败")
+            raise NativeIndexError("native index allocation failed / ")
 
     def __enter__(self) -> "NativeIndex":
-        """Enter a context-managed native-index lifetime. / 进入上下文管理的原生索引生命周期。"""
+        'Enter a context-managed native-index lifetime.'
         return self
 
     def __exit__(self, exception_type: object, exception: object, traceback: object) -> None:
-        """Release native memory at context exit. / 在上下文退出时释放原生内存。"""
+        'Release native memory at context exit.'
         self.close()
 
     def close(self) -> None:
-        """Release the owned native index exactly once. / 恰好一次释放所持有的原生索引。"""
+        'Release the owned native index exactly once.'
         if self._pointer:
             self._library.dbt_index_destroy(self._pointer)
             self._pointer = None
 
     def _require_open(self) -> ctypes.c_void_p:
-        """Return the live native pointer or raise a clear error. / 返回有效原生指针，或引发明确错误。"""
+        'Return the live native pointer or raise a clear error.'
         if not self._pointer:
-            raise NativeIndexError("native index is closed / 原生索引已关闭")
+            raise NativeIndexError("native index is closed / ")
         return self._pointer
 
     @property
     def is_lock_free(self) -> bool:
-        """Report hardware support for the native atomic primitives. / 报告原生原子原语的硬件支持情况。"""
+        'Report hardware support for the native atomic primitives.'
         return bool(self._library.dbt_index_is_lock_free(self._require_open()))
 
     @property
     def edge_count(self) -> int:
-        """Return successfully reserved owner-edge count. / 返回成功预留的所有者边数量。"""
+        'Return successfully reserved owner-edge count.'
         count = self._library.dbt_index_edge_count(self._require_open())
         if count < 0:
-            raise NativeIndexError("native edge count failed / 原生边计数失败")
+            raise NativeIndexError("native edge count failed / ")
         return count
 
     @property
     def memory_bytes(self) -> int:
-        """Return native reserved metadata bytes. / 返回原生预留元数据字节数。"""
+        'Return native reserved metadata bytes.'
         return int(self._library.dbt_index_memory_bytes(self._require_open()))
 
     def register_label(self, label: str, token: int, created_round: int) -> int:
-        """Register one owner-label relation and return its task identifier.
-
-        登记一个所有者—标签关系并返回任务标识。
-        """
+        'Register one owner-label relation and return its task identifier.'
         self._validate_token(token)
         self._validate_round(created_round)
         task_id = ctypes.c_int()
@@ -239,14 +236,11 @@ class NativeIndex:
             ctypes.byref(task_id),
         )
         if not accepted:
-            raise NativeIndexError("native label registration failed / 原生标签登记失败")
+            raise NativeIndexError("native label registration failed / ")
         return task_id.value
 
     def find_label(self, label: str) -> int | None:
-        """Return a task identifier for a registered label, if present.
-
-        返回已登记标签的任务标识；标签不存在时返回空值。
-        """
+        'Return a task identifier for a registered label, if present.'
         task_id = ctypes.c_int()
         found = self._library.dbt_index_find_label(
             self._require_open(), _canonical_label(label), ctypes.byref(task_id)
@@ -254,21 +248,18 @@ class NativeIndex:
         return task_id.value if found else None
 
     def owners(self, task_id: int) -> tuple[int, ...]:
-        """Return the deterministic owner set for one task. / 返回一个任务确定性的所有者集合。"""
+        'Return the deterministic owner set for one task.'
         self._validate_task_id(task_id)
         output = (ctypes.c_uint32 * self.max_clients)()
         count = self._library.dbt_index_copy_task_owners(
             self._require_open(), task_id, output, self.max_clients
         )
         if count < 0:
-            raise NativeIndexError("native owner export failed / 原生所有者导出失败")
+            raise NativeIndexError("native owner export failed / ")
         return tuple(sorted(output[index] for index in range(count)))
 
     def task_has_owner(self, task_id: int, token: int) -> bool:
-        """Return whether one SID owns a task before task-state operations.
-
-        在任务状态操作前，返回一个 SID 是否拥有该任务。
-        """
+        'Return whether one SID owns a task before task-state operations.'
         self._validate_task_id(task_id)
         self._validate_token(token)
         return bool(
@@ -280,33 +271,33 @@ class NativeIndex:
         )
 
     def client_tasks(self, token: int) -> tuple[int, ...]:
-        """Return the deterministic task set owned by one client. / 返回一个客户端拥有的确定性任务集合。"""
+        'Return the deterministic task set owned by one client.'
         self._validate_token(token)
         output = (ctypes.c_int * self.capacity)()
         count = self._library.dbt_index_copy_client_tasks(
             self._require_open(), token, output, self.capacity
         )
         if count < 0:
-            raise NativeIndexError("native client-task export failed / 原生客户端任务导出失败")
+            raise NativeIndexError("native client-task export failed / ")
         return tuple(sorted(output[index] for index in range(count)))
 
     def task_label(self, task_id: int) -> str:
-        """Return the canonical label stored for one task. / 返回一个任务存储的规范标签。"""
+        'Return the canonical label stored for one task.'
         self._validate_task_id(task_id)
         output = ctypes.create_string_buffer(LABEL_HEX_LENGTH + 1)
         copied = self._library.dbt_index_task_label(
             self._require_open(), task_id, output, len(output)
         )
         if not copied:
-            raise NativeIndexError("native task-label export failed / 原生任务标签导出失败")
+            raise NativeIndexError("native task-label export failed / ")
         return output.value.decode("ascii")
 
     def snapshot(self, task_id: int) -> TaskSnapshot:
-        """Return decoded state, trainer, and version for one task. / 返回一个任务的已解码状态、训练者和版本。"""
+        'Return decoded state, trainer, and version for one task.'
         self._validate_task_id(task_id)
         state_value = self._library.dbt_task_state(self._require_open(), task_id)
         if state_value < 0:
-            raise NativeIndexError("native task-state query failed / 原生任务状态查询失败")
+            raise NativeIndexError("native task-state query failed / ")
         try:
             state = TaskState(state_value)
         except ValueError as error:
@@ -318,19 +309,19 @@ class NativeIndex:
         )
 
     def try_claim(self, task_id: int, trainer: int) -> bool:
-        """Attempt an EMPTY-to-PENDING state transition. / 尝试执行 EMPTY 到 PENDING 的状态迁移。"""
+        'Attempt an EMPTY-to-PENDING state transition.'
         self._validate_task_id(task_id)
         self._validate_token(trainer)
         return bool(self._library.dbt_task_try_claim(self._require_open(), task_id, trainer))
 
     def mark_committed(self, task_id: int, trainer: int) -> bool:
-        """Commit a task only for its current trainer. / 仅允许当前训练者提交任务。"""
+        'Commit a task only for its current trainer.'
         self._validate_task_id(task_id)
         self._validate_token(trainer)
         return bool(self._library.dbt_task_mark_committed(self._require_open(), task_id, trainer))
 
     def release_if_trainer(self, task_id: int, trainer: int) -> bool:
-        """Release a pending task only for its current trainer. / 仅允许当前训练者释放挂起任务。"""
+        'Release a pending task only for its current trainer.'
         self._validate_task_id(task_id)
         self._validate_token(trainer)
         return bool(
@@ -340,56 +331,41 @@ class NativeIndex:
         )
 
     def reset(self, task_id: int) -> None:
-        """Reset a task while incrementing its native version. / 重置任务并递增其原生版本号。"""
+        'Reset a task while incrementing its native version.'
         self._validate_task_id(task_id)
         if not self._library.dbt_task_reset(self._require_open(), task_id):
-            raise NativeIndexError("native task reset failed / 原生任务重置失败")
+            raise NativeIndexError("native task reset failed / ")
 
     def previous_trainer(self, task_id: int) -> int:
-        """Return the trainer retained from the last completed round.
-
-        返回从上一完成轮次保留的训练者。
-        """
+        'Return the trainer retained from the last completed round.'
         self._validate_task_id(task_id)
         return int(self._library.dbt_task_previous_get(self._require_open(), task_id))
 
     def set_previous_trainer(self, task_id: int, trainer: int) -> None:
-        """Persist one prior-round trainer independently from current state.
-
-        独立于当前状态持久化一个上一轮训练者。
-        """
+        'Persist one prior-round trainer independently from current state.'
         self._validate_task_id(task_id)
         self._validate_token(trainer)
         if not self._library.dbt_task_previous_set(self._require_open(), task_id, trainer):
-            raise NativeIndexError("native previous trainer update failed / 原生上一训练者更新失败")
+            raise NativeIndexError("native previous trainer update failed / ")
 
     def recovery_required(self, task_id: int) -> bool:
-        """Return whether a dropped trainer left this task needing recovery.
-
-        返回掉线训练者是否使该任务需要恢复。
-        """
+        'Return whether a dropped trainer left this task needing recovery.'
         self._validate_task_id(task_id)
         required = self._library.dbt_task_recovery_get(self._require_open(), task_id)
         if required < 0:
-            raise NativeIndexError("native recovery query failed / 原生恢复查询失败")
+            raise NativeIndexError("native recovery query failed / ")
         return bool(required)
 
     def set_recovery_required(self, task_id: int, required: bool) -> None:
-        """Mark whether this task needs a safe trainer reassignment.
-
-        标记该任务是否需要安全地重新分配训练者。
-        """
+        'Mark whether this task needs a safe trainer reassignment.'
         self._validate_task_id(task_id)
         if not isinstance(required, bool):
-            raise TypeError("required must be bool / required 必须为布尔值")
+            raise TypeError("required must be bool / required ")
         if not self._library.dbt_task_recovery_set(self._require_open(), task_id, int(required)):
-            raise NativeIndexError("native recovery update failed / 原生恢复状态更新失败")
+            raise NativeIndexError("native recovery update failed / ")
 
     def all_task_ids(self) -> tuple[int, ...]:
-        """Return all allocated tasks for round reset and recovery scans.
-
-        返回用于轮次重置与恢复扫描的全部已分配任务。
-        """
+        'Return all allocated tasks for round reset and recovery scans.'
         output = (ctypes.c_int * self.capacity)()
         count = self._library.dbt_index_copy_all_tasks(
             self._require_open(),
@@ -397,20 +373,20 @@ class NativeIndex:
             self.capacity,
         )
         if count < 0:
-            raise NativeIndexError("native task export failed / 原生任务导出失败")
+            raise NativeIndexError("native task export failed / ")
         return tuple(sorted(output[index] for index in range(count)))
 
     def _validate_token(self, token: int) -> None:
-        """Reject tokens outside the native index domain. / 拒绝原生索引域外的令牌。"""
+        'Reject tokens outside the native index domain.'
         if not isinstance(token, int) or not 1 <= token <= self.max_clients:
-            raise ValueError("token must be an allocated client identifier / 令牌必须是已分配的客户端标识")
+            raise ValueError("token must be an allocated client identifier / ")
 
     def _validate_round(self, created_round: int) -> None:
-        """Reject invalid unsigned round identifiers. / 拒绝无效的无符号轮次标识。"""
+        'Reject invalid unsigned round identifiers.'
         if not isinstance(created_round, int) or not 0 <= created_round <= 0xFFFFFFFF:
-            raise ValueError("created_round must fit uint32 / created_round 必须适配 uint32")
+            raise ValueError("created_round must fit uint32 / created_round  uint32")
 
     def _validate_task_id(self, task_id: int) -> None:
-        """Reject task identifiers outside the allocated table. / 拒绝已分配表范围外的任务标识。"""
+        'Reject task identifiers outside the allocated table.'
         if not isinstance(task_id, int) or not 0 <= task_id < self.capacity:
-            raise ValueError("task_id is outside the native table / task_id 超出原生表范围")
+            raise ValueError("task_id is outside the native table / task_id ")

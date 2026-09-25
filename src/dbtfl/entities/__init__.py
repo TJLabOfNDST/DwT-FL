@@ -1,4 +1,4 @@
-"""Runnable DwT-FL role entities. / 可运行的 DwT-FL 角色实体。"""
+'Runnable DwT-FL role entities.'
 
 from .aggregation_server import (
     AggregationServerConfig,

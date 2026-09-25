@@ -1,4 +1,4 @@
-"""Shared AS, KS, and client communication primitives. / 共享的 AS、KS 与客户端通信原语。"""
+'Shared AS, KS, and client communication primitives.'
 
 from .endpoints import AggregationServerPath, KeyServerPath
 from .http import (

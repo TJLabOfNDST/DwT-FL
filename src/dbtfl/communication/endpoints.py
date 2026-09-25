@@ -1,4 +1,4 @@
-"""Stable path constants for future AS and KS implementations. / 未来 AS 与 KS 实现的稳定路径常量。"""
+'Stable path constants for future AS and KS implementations.'
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from enum import Enum
 
 
 class AggregationServerPath(str, Enum):
-    """AS routes reserved by the DwT-FL protocol. / DwT-FL 协议保留的 AS 路由。"""
+    'AS routes reserved by the DwT-FL protocol. / DwT-FL'
 
     HEALTH = "/v1/health"
     REGISTER_CLIENT = "/v1/clients/register"
@@ -24,7 +24,7 @@ class AggregationServerPath(str, Enum):
 
 
 class KeyServerPath(str, Enum):
-    """KS routes reserved by the DwT-FL protocol. / DwT-FL 协议保留的 KS 路由。"""
+    'KS routes reserved by the DwT-FL protocol. / DwT-FL'
 
     HEALTH = "/v1/health"
     EVALUATE_OPRF = "/v1/oprf/evaluate"

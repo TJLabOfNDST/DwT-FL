@@ -1,4 +1,4 @@
-"""DwT-FL experiment implementation. / DwT-FL 实验实现。"""
+'DwT-FL experiment implementation. / DwT-FL'
 
 from .native_index import NativeIndex, NativeIndexError, TaskSnapshot, TaskState
 

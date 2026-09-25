@@ -1,7 +1,4 @@
-"""Numerically checked weighted FedAvg for model state dictionaries.
-
-面向模型状态字典、带数值校验的加权 FedAvg 实现。
-"""
+'Numerically checked weighted FedAvg for model state dictionaries.'
 
 from __future__ import annotations
 
@@ -13,39 +10,27 @@ import numpy
 
 
 class FedAvgError(ValueError):
-    """Raised when client updates cannot safely participate in FedAvg.
-
-    当客户端更新无法安全参与 FedAvg 时引发。
-    """
+    'Raised when client updates cannot safely participate in FedAvg.'
 
 
 def fedavg_arrays(
     state_dicts: Sequence[Mapping[str, numpy.ndarray]],
     sample_counts: Sequence[int],
 ) -> dict[str, numpy.ndarray]:
-    """Compute sample-count-weighted FedAvg with strict tensor compatibility.
-
-    使用样本数加权的 FedAvg，并严格检查张量兼容性。
-
-    For floating tensors, ``w = Σ(n_i * w_i) / Σn_i`` is accumulated in
-    float64 before casting back to the original dtype.  Integer or Boolean
-    buffers must match exactly because averaging them changes model semantics.
-    对浮点张量，``w = Σ(n_i * w_i) / Σn_i`` 先在 float64 中累积，再转换回原始
-    数据类型；整数或布尔缓冲区必须严格一致，因为对它们求平均会改变模型语义。
-    """
+    'Compute sample-count-weighted FedAvg with strict tensor compatibility.\n    For floating tensors, ``w = Σ(n_i * w_i) / Σn_i`` is accumulated in\n    float64 before casting back to the original dtype.  Integer or Boolean\n    buffers must match exactly because averaging them changes model semantics.'
     if not state_dicts or len(state_dicts) != len(sample_counts):
-        raise FedAvgError("updates and sample counts must be non-empty and aligned / 更新与样本数必须非空且对齐")
+        raise FedAvgError("updates and sample counts must be non-empty and aligned / ")
     if any(
         isinstance(count, bool) or not isinstance(count, int) or count < 1
         for count in sample_counts
     ):
-        raise FedAvgError("sample counts must be positive integers / 样本数必须为正整数")
+        raise FedAvgError("sample counts must be positive integers / ")
     expected_keys = tuple(sorted(state_dicts[0]))
     if not expected_keys:
-        raise FedAvgError("state dictionaries must not be empty / 状态字典不得为空")
+        raise FedAvgError("state dictionaries must not be empty / ")
     for state_dict in state_dicts:
         if tuple(sorted(state_dict)) != expected_keys:
-            raise FedAvgError("all updates must have identical tensor keys / 所有更新必须具有相同张量键")
+            raise FedAvgError("all updates must have identical tensor keys / ")
 
     total_samples = sum(sample_counts)
     result: dict[str, numpy.ndarray] = {}
@@ -58,7 +43,7 @@ def fedavg_arrays(
         ):
             raise FedAvgError(
                 f"tensor {name} has incompatible shape or dtype / "
-                f"张量 {name} 的形状或类型不兼容"
+                f" {name} "
             )
         if numpy.issubdtype(reference.dtype, numpy.floating):
             accumulator = numpy.zeros(reference.shape, dtype=numpy.float64)
@@ -69,7 +54,7 @@ def fedavg_arrays(
             result[name] = reference.copy()
         else:
             raise FedAvgError(
-                f"non-floating tensor {name} differs across updates / 非浮点张量 {name} 在更新间不同"
+                f"non-floating tensor {name} differs across updates /  {name} "
             )
     return result
 
@@ -79,21 +64,18 @@ def aggregate_safetensors(
     sample_counts: Sequence[int],
     output_path: Path,
 ) -> Path:
-    """Load full checkpoints, apply FedAvg, and atomically save a global model.
-
-    加载完整检查点、执行 FedAvg 并原子保存全局模型。
-    """
+    'Load full checkpoints, apply FedAvg, and atomically save a global model.'
     try:
         import torch
         from safetensors.torch import load_file, save_file
     except ImportError as error:
         raise RuntimeError(
             "FedAvg checkpoint aggregation requires safetensors and PyTorch / "
-            "FedAvg 检查点聚合需要 safetensors 与 PyTorch"
+            "FedAvg  safetensors  PyTorch"
         ) from error
     normalized_paths = tuple(Path(path).resolve() for path in update_paths)
     if not normalized_paths or any(not path.is_file() for path in normalized_paths):
-        raise FileNotFoundError("every model update path must exist / 每个模型更新路径必须存在")
+        raise FileNotFoundError("every model update path must exist / ")
     numpy_states = [
         {name: tensor.detach().cpu().numpy() for name, tensor in load_file(str(path)).items()}
         for path in normalized_paths

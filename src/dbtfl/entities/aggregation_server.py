@@ -1,7 +1,4 @@
-"""Aggregation Server session management compatible with the DwT-FL index.
-
-与 DwT-FL 双向索引兼容的聚合服务器会话管理。
-"""
+'Aggregation Server session management compatible with the DwT-FL index.'
 
 from __future__ import annotations
 
@@ -58,10 +55,7 @@ MAX_MODEL_CHUNK_BYTES: Final[int] = 2 * 1024 * 1024
 
 @dataclass(frozen=True, slots=True)
 class ClientSessionSnapshot:
-    """Current AS-side liveness state for one globally unique SID.
-
-    一个全局唯一 SID 的当前 AS 侧存活状态。
-    """
+    'Current AS-side liveness state for one globally unique SID.'
 
     sid: int
     client_id: str
@@ -72,10 +66,7 @@ class ClientSessionSnapshot:
 
 @dataclass(frozen=True, slots=True)
 class GlobalModelDescriptor:
-    """AS-local global checkpoint metadata available for a completed round.
-
-    为一个完成轮次提供的 AS 本地全局检查点元数据。
-    """
+    'AS-local global checkpoint metadata available for a completed round.'
 
     round_id: int
     checkpoint_path: Path
@@ -85,10 +76,7 @@ class GlobalModelDescriptor:
 
 @dataclass(frozen=True, slots=True)
 class RoundConfiguration:
-    """Fixed FedAvg roster selected before client updates arrive.
-
-    在客户端更新到达前选择的固定 FedAvg 名册。
-    """
+    'Fixed FedAvg roster selected before client updates arrive.'
 
     round_id: int
     participant_sids: tuple[int, ...]
@@ -96,10 +84,7 @@ class RoundConfiguration:
 
 @dataclass(slots=True)
 class _ClientSession:
-    """Mutable session timer state private to the AS service.
-
-    AS 服务私有的可变会话计时状态。
-    """
+    'Mutable session timer state private to the AS service.\n    AS'
 
     sid: int
     client_id: str
@@ -109,10 +94,7 @@ class _ClientSession:
     recovery_risk: bool = False
 
     def snapshot(self) -> ClientSessionSnapshot:
-        """Copy public liveness information without exposing timer internals.
-
-        复制公开存活信息，不暴露计时器内部细节。
-        """
+        'Copy public liveness information without exposing timer internals.'
         return ClientSessionSnapshot(
             sid=self.sid,
             client_id=self.client_id,
@@ -123,10 +105,7 @@ class _ClientSession:
 
 
 class AggregationServerService:
-    """Issue SIDs and maintain heartbeat timers alongside the native index.
-
-    在原生索引旁发放 SID 并维护心跳计时器。
-    """
+    'Issue SIDs and maintain heartbeat timers alongside the native index.'
 
     def __init__(
         self,
@@ -143,20 +122,17 @@ class AggregationServerService:
         evaluation_reset_callback: Callable[[int, float, float], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        """Create session routes without exposing index internals over HTTP.
-
-        创建会话路由，不通过 HTTP 暴露索引内部状态。
-        """
+        'Create session routes without exposing index internals over HTTP.'
         if heartbeat_interval_seconds <= 0 or heartbeat_timeout_seconds <= 0:
-            raise ValueError("heartbeat values must be positive / 心跳参数必须为正数")
+            raise ValueError("heartbeat values must be positive / ")
         if heartbeat_timeout_seconds <= heartbeat_interval_seconds:
             raise ValueError(
-                "heartbeat timeout must exceed interval / 心跳超时必须大于发送周期"
+                "heartbeat timeout must exceed interval / "
             )
         if claim_mode not in {"cas", "mutex"}:
-            raise ValueError("claim_mode must be cas or mutex / 抢占模式必须为 cas 或 mutex")
+            raise ValueError("claim_mode must be cas or mutex /  cas  mutex")
         if recovery_index_mode not in {"inverse", "scan"}:
-            raise ValueError("recovery_index_mode must be inverse or scan / 恢复索引模式必须为 inverse 或 scan")
+            raise ValueError("recovery_index_mode must be inverse or scan /  inverse  scan")
         self.index = index
         self.heartbeat_interval_seconds = heartbeat_interval_seconds
         self.heartbeat_timeout_seconds = heartbeat_timeout_seconds
@@ -221,15 +197,12 @@ class AggregationServerService:
         )
 
     def register(self, message: WireMessage) -> WireMessage:
-        """Issue an unused SID or reconnect a known client with its same SID.
-
-        发放未使用 SID，或让已知客户端使用原 SID 重连。
-        """
+        'Issue an unused SID or reconnect a known client with its same SID.'
         if message.message_type != AS_REGISTER_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.client.register.request / 应为 as.client.register.request",
+                "expected as.client.register.request /  as.client.register.request",
             )
         client_id = self._client_id_from_payload(message.payload)
         now = self._clock()
@@ -240,7 +213,7 @@ class AggregationServerService:
                     raise RequestRejected(
                         503,
                         "sid_capacity_exhausted",
-                        "AS has no remaining SID capacity / AS 没有剩余 SID 容量",
+                        "AS has no remaining SID capacity / AS  SID ",
                     )
                 sid = self._next_sid
                 self._next_sid += 1
@@ -264,15 +237,12 @@ class AggregationServerService:
         )
 
     def heartbeat(self, message: WireMessage) -> WireMessage:
-        """Refresh one known SID timer and confirm its active connection.
-
-        刷新一个已知 SID 的计时器，并确认其活动连接。
-        """
+        'Refresh one known SID timer and confirm its active connection.'
         if message.message_type != AS_HEARTBEAT_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.client.heartbeat.request / 应为 as.client.heartbeat.request",
+                "expected as.client.heartbeat.request /  as.client.heartbeat.request",
             )
         sid = self._sid_from_payload(message.payload)
         now = self._clock()
@@ -282,7 +252,7 @@ class AggregationServerService:
                 raise RequestRejected(
                     404,
                     "unknown_sid",
-                    "SID has not been registered / SID 尚未注册",
+                    "SID has not been registered / SID ",
                 )
             session.last_heartbeat_seconds = now
             session.online = True
@@ -301,15 +271,12 @@ class AggregationServerService:
         )
 
     def register_labels(self, message: WireMessage) -> WireMessage:
-        """Append both directions while leaving every new task in EMPTY state.
-
-        追加双向索引，并让每个新任务保持在 EMPTY 状态。
-        """
+        'Append both directions while leaving every new task in EMPTY state.'
         if message.message_type != AS_REGISTER_LABELS_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.labels.register.request / 应为 as.labels.register.request",
+                "expected as.labels.register.request /  as.labels.register.request",
             )
         sid, created_round, labels = self._label_submission_from_payload(message.payload)
         self.expire_sessions()
@@ -319,14 +286,14 @@ class AggregationServerService:
                 raise RequestRejected(
                     404,
                     "unknown_sid",
-                    "SID has not been registered / SID 尚未注册",
+                    "SID has not been registered / SID ",
                 )
             if not session.online:
                 raise RequestRejected(
                     409,
                     "sid_offline",
                     "offline SID must reconnect before submitting labels / "
-                    "离线 SID 必须重连后才能提交标签",
+                    " SID ",
                 )
 
         registrations: list[dict[str, object]] = []
@@ -338,7 +305,7 @@ class AggregationServerService:
                     503,
                     "index_registration_failed",
                     "AS native index could not register the label / "
-                    "AS 原生索引无法登记该标签",
+                    "AS ",
                 ) from error
             registrations.append(
                 {
@@ -357,28 +324,25 @@ class AggregationServerService:
         )
 
     def claim_tasks(self, message: WireMessage) -> WireMessage:
-        """Perform the separate paper CAS phase for already registered labels.
-
-        为已登记标签执行论文中独立的 CAS 阶段。
-        """
+        'Perform the separate paper CAS phase for already registered labels.'
         if message.message_type != AS_CLAIM_TASKS_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.tasks.claim.request / 应为 as.tasks.claim.request",
+                "expected as.tasks.claim.request /  as.tasks.claim.request",
             )
         sid, labels = self._claim_payload_from_message(message.payload)
         self.expire_sessions()
         with self._lock:
             session = self._sessions_by_sid.get(sid)
             if session is None:
-                raise RequestRejected(404, "unknown_sid", "SID has not been registered / SID 尚未注册")
+                raise RequestRejected(404, "unknown_sid", "SID has not been registered / SID ")
             if not session.online:
                 raise RequestRejected(
                     409,
                     "sid_offline",
                     "offline SID must reconnect before claiming tasks / "
-                    "离线 SID 必须重连后才能抢占任务",
+                    " SID ",
                 )
 
         decisions: list[dict[str, object]] = []
@@ -388,13 +352,13 @@ class AggregationServerService:
                 raise RequestRejected(
                     404,
                     "unknown_protected_label",
-                    "protected label has not been registered / 受保护标签尚未登记",
+                    "protected label has not been registered / ",
                 )
             if not self.index.task_has_owner(task_id, sid):
                 raise RequestRejected(
                     403,
                     "sid_not_label_owner",
-                    "SID does not own this protected label / SID 不拥有该受保护标签",
+                    "SID does not own this protected label / SID ",
                 )
             initial_snapshot = self.index.snapshot(task_id)
             if initial_snapshot.state == TaskState.EMPTY:
@@ -413,9 +377,9 @@ class AggregationServerService:
                 # Concurrent request shards from the same client can observe a
                 # PENDING transition that another shard has just won for the
                 # same SID. This is an idempotent TRAIN acknowledgement, not a
-                # deduplication loss; a different SID remains DEDUP. 同一客户
-                # 端的并发请求分片可能观察到另一分片刚刚为同一 SID 赢得的 PENDING
-                # 状态。这应幂等地确认 TRAIN，而不是误判为去重；不同 SID 仍为 DEDUP。
+                # deduplication loss; a different SID remains DEDUP.
+                
+                
                 operation = (
                     "TRAIN"
                     if initial_snapshot.state == TaskState.PENDING
@@ -437,26 +401,14 @@ class AggregationServerService:
         )
 
     def _claim_task(self, task_id: int, sid: int) -> bool:
-        """Claim with production CAS or the explicit pessimistic-lock ablation.
-
-        通过生产 CAS 或显式悲观锁消融版本抢占任务。
-
-        The mutex mode serializes the entire claim decision before calling the
-        same native state transition. It is intentionally a pessimistic control,
-        not an alternative result mislabeled as lock-free CAS. ``mutex`` 模式在
-        调用同一原生状态迁移前串行化完整抢占决策；它是刻意的悲观控制组，不会被错误
-        标记为无锁 CAS 的替代结果。
-        """
+        'Claim with production CAS or the explicit pessimistic-lock ablation.\n        The mutex mode serializes the entire claim decision before calling the\n        same native state transition. It is intentionally a pessimistic control\n        not an alternative result mislabeled as lock-free CAS. ``mutex``'
         if self.claim_mode == "mutex":
             with self._mutex_claim_lock:
                 return self.index.try_claim(task_id, sid)
         return self.index.try_claim(task_id, sid)
 
     def model_update(self, message: WireMessage) -> WireMessage:
-        """Receive one bounded checkpoint chunk or finalize a client update.
-
-        接收一个有界检查点分块，或完成一个客户端更新。
-        """
+        'Receive one bounded checkpoint chunk or finalize a client update.'
         if message.message_type == AS_MODEL_CHUNK_REQUEST:
             return self._append_model_chunk(message)
         if message.message_type == AS_MODEL_FINALIZE_REQUEST:
@@ -464,14 +416,11 @@ class AggregationServerService:
         raise RequestRejected(
             400,
             "unexpected_message_type",
-            "expected model chunk or finalize request / 应为模型分块或完成请求",
+            "expected model chunk or finalize request / ",
         )
 
     def _round_instructions_for_sid(self, sid: int) -> list[dict[str, object]]:
-        """Issue idempotent next-round TRAIN or DEDUP work on a heartbeat.
-
-        在心跳中下发幂等的下一轮 TRAIN 或 DEDUP 工作。
-        """
+        'Issue idempotent next-round TRAIN or DEDUP work on a heartbeat.'
         with self._lock:
             if not self._round_dispatch_enabled:
                 return []
@@ -501,23 +450,7 @@ class AggregationServerService:
         return instructions
 
     def _select_next_trainer(self, task_id: int) -> int | None:
-        """Choose the next-round trainer under the configured history policy.
-
-        按已配置的历史策略选择下一轮训练者。
-
-        When history scheduling is enabled, a client that timed out in an
-        earlier round remains marked as ``recovery_risk`` after it reconnects.
-        The scheduler excludes that client from duplicated tasks whenever a
-        healthy online owner exists, as required by the paper's training-right
-        allocation adjustment.  The explicit ``w/o history scheduling``
-        ablation deliberately does not consume this historical risk record:
-        it follows the ordinary stable-case rule and reuses the previous online
-        trainer.  历史调度启用时，曾在早前轮次超时的客户端即使重连仍保留
-        ``recovery_risk`` 标记；只要存在健康在线所有者，调度器便会将重复数据
-        排除在该风险客户端之外，符合论文的训练权分配策略调整。显式的“去除历史
-        调度”消融则刻意不读取该历史风险记录，而按稳定场景的常规规则复用上一轮
-        在线训练者。
-        """
+        "Choose the next-round trainer under the configured history policy.\n        When history scheduling is enabled, a client that timed out in an\n        earlier round remains marked as ``recovery_risk`` after it reconnects.\n        The scheduler excludes that client from duplicated tasks whenever a\n        healthy online owner exists, as required by the paper's training-right\n        allocation adjustment.  The explicit ``w/o history scheduling``\n        ablation deliberately does not consume this historical risk record\n        it follows the ordinary stable-case rule and reuses the previous online\n        trainer.\n        ``recovery_risk``"
         owners = self.index.owners(task_id)
         with self._lock:
             online_owners = tuple(
@@ -546,15 +479,12 @@ class AggregationServerService:
         return min(safe_owners or online_owners)
 
     def aggregate_model_updates(self, message: WireMessage) -> WireMessage:
-        """Apply FedAvg to the requested complete client-update set.
-
-        对请求的完整客户端更新集合执行 FedAvg。
-        """
+        'Apply FedAvg to the requested complete client-update set.'
         if message.message_type != AS_MODEL_AGGREGATE_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.model.aggregate.request / 应为 as.model.aggregate.request",
+                "expected as.model.aggregate.request /  as.model.aggregate.request",
             )
         round_id, expected_sids = self._aggregate_payload(message.payload)
         with self._lock:
@@ -564,7 +494,7 @@ class AggregationServerService:
                 raise RequestRejected(
                     409,
                     "model_updates_incomplete",
-                    f"missing model updates for SIDs {missing_sids} / 缺少 SID {missing_sids} 的模型更新",
+                    f"missing model updates for SIDs {missing_sids} /  SID {missing_sids} ",
                 )
             descriptors = tuple(updates[sid] for sid in expected_sids)
             configured = self._round_configurations.get(round_id)
@@ -573,7 +503,7 @@ class AggregationServerService:
                     409,
                     "round_roster_mismatch",
                     "FedAvg participants differ from the configured round roster / "
-                    "FedAvg 参与者与已配置轮次名册不同",
+                    "FedAvg ",
                 )
             pending_tasks = [
                 task_id
@@ -585,7 +515,7 @@ class AggregationServerService:
                     409,
                     "round_tasks_incomplete",
                     "all PENDING tasks must finish or recover before aggregation / "
-                    "聚合前所有 PENDING 任务必须完成或恢复",
+                    " PENDING ",
                 )
         output_path = self.model_update_store.global_checkpoint_path(round_id)
         try:
@@ -598,7 +528,7 @@ class AggregationServerService:
             raise RequestRejected(
                 422,
                 "fedavg_failed",
-                f"FedAvg could not aggregate updates: {error} / FedAvg 无法聚合更新：{error}",
+                f"FedAvg could not aggregate updates: {error} / FedAvg {error}",
             ) from error
         descriptor = GlobalModelDescriptor(
             round_id=round_id,
@@ -622,20 +552,17 @@ class AggregationServerService:
         )
 
     def download_global_model(self, message: WireMessage) -> WireMessage:
-        """Return one bounded global-checkpoint chunk to an online client.
-
-        向在线客户端返回一个有界全局检查点分块。
-        """
+        'Return one bounded global-checkpoint chunk to an online client.'
         if message.message_type != AS_GLOBAL_MODEL_CHUNK_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.global_model.chunk.request / 应为 as.global_model.chunk.request",
+                "expected as.global_model.chunk.request /  as.global_model.chunk.request",
             )
         sid, round_id, offset, max_bytes = self._global_model_chunk_payload(message.payload)
         self._require_online_sid(
             sid,
-            operation=("downloading the global model", "下载全局模型"),
+            operation=("downloading the global model", ""),
         )
         with self._lock:
             descriptor = self._global_models.get(round_id)
@@ -643,13 +570,13 @@ class AggregationServerService:
             raise RequestRejected(
                 404,
                 "global_model_not_found",
-                "global model is not available for this round / 该轮全局模型尚不可用",
+                "global model is not available for this round / ",
             )
         if offset > descriptor.byte_count:
             raise RequestRejected(
                 416,
                 "invalid_global_model_offset",
-                "offset exceeds global model size / 偏移量超过全局模型大小",
+                "offset exceeds global model size / ",
             )
         with descriptor.checkpoint_path.open("rb") as stream:
             stream.seek(offset)
@@ -669,15 +596,12 @@ class AggregationServerService:
         )
 
     def configure_round(self, message: WireMessage) -> WireMessage:
-        """Freeze an explicit FedAvg roster so clients may join sequentially.
-
-        固定一个显式 FedAvg 名册，使客户端可以先后加入。
-        """
+        'Freeze an explicit FedAvg roster so clients may join sequentially.'
         if message.message_type != AS_CONFIGURE_ROUND_REQUEST:
             raise RequestRejected(
                 400,
                 "unexpected_message_type",
-                "expected as.round.configure.request / 应为 as.round.configure.request",
+                "expected as.round.configure.request /  as.round.configure.request",
             )
         round_id, participant_sids = self._round_configuration_payload(message.payload)
         with self._lock:
@@ -685,13 +609,13 @@ class AggregationServerService:
                 raise RequestRejected(
                     404,
                     "unknown_round_participant",
-                    "every configured SID must be registered / 每个配置 SID 必须已注册",
+                    "every configured SID must be registered /  SID ",
                 )
             if self._updates_by_round.get(round_id):
                 raise RequestRejected(
                     409,
                     "round_already_started",
-                    "cannot change roster after an update arrives / 更新到达后不可更改名册",
+                    "cannot change roster after an update arrives / ",
                 )
             configuration = RoundConfiguration(round_id, participant_sids)
             self._round_configurations[round_id] = configuration
@@ -702,9 +626,9 @@ class AggregationServerService:
             # A frozen FedAvg roster fixes participants, not their unfinished
             # task set. Before aggregation a heartbeat may transfer a released
             # EMPTY task to an existing participant; that participant performs
-            # incremental training and replaces its update before FedAvg. 固定
-            # FedAvg 名册只固定参与者，不固定其未完成任务集合。聚合前心跳可将释放的
-            # EMPTY 任务转移给既有参与者；该参与者增量训练并替换更新后再聚合。
+            # incremental training and replaces its update before FedAvg.
+            # FedAvg
+            # EMPTY
             self._round_dispatch_sealed = False
         return WireMessage.create(
             AS_CONFIGURE_ROUND_RESPONSE,
@@ -713,21 +637,13 @@ class AggregationServerService:
         )
 
     def evaluation_metrics(self, message: WireMessage) -> WireMessage:
-        """Return read-only AS metadata required by the experiment protocol.
-
-        返回实验协议所需的只读 AS 元数据。
-
-        This endpoint intentionally exposes capacities and byte counts only; it
-        never returns protected labels, plaintext records, owners, or model
-        content. 该端点刻意只公开容量和字节计数，绝不返回受保护标签、明文记录、
-        所有者或模型内容。
-        """
+        'Return read-only AS metadata required by the experiment protocol.\n        This endpoint intentionally exposes capacities and byte counts only; it\n        never returns protected labels, plaintext records, owners, or model\n        content.'
         if message.message_type != AS_METRICS_REQUEST or dict(message.payload):
             raise RequestRejected(
                 400,
                 "invalid_metrics_request",
                 "metrics request must have the expected type and an empty payload / "
-                "指标请求必须具有预期类型且负载为空",
+                "",
             )
         with self._lock:
             sessions = tuple(self._sessions_by_sid.values())
@@ -759,15 +675,7 @@ class AggregationServerService:
         )
 
     def reset_evaluation(self, message: WireMessage) -> WireMessage:
-        """Reset a dedicated experimental AS after constant-time token validation.
-
-        在恒定时间令牌校验后重置专用实验 AS。
-
-        This route is disabled unless deployment config supplies a token. It
-        clears all in-memory sessions, indexes, and AS-owned update artifacts;
-        never enable it on a shared production AS. 该路由仅在部署配置提供令牌时
-        启用；它会清除所有内存会话、索引和 AS 拥有的更新产物，绝不可在共享生产 AS 启用。
-        """
+        'Reset a dedicated experimental AS after constant-time token validation.\n        This route is disabled unless deployment config supplies a token. It\n        clears all in-memory sessions, indexes, and AS-owned update artifacts\n        never enable it on a shared production AS.'
         if message.message_type != AS_EVALUATION_RESET_REQUEST or set(message.payload) != {
             "token", "backend_worker_count", "heartbeat_interval_seconds",
             "heartbeat_timeout_seconds",
@@ -776,7 +684,7 @@ class AggregationServerService:
                 400,
                 "invalid_evaluation_reset_request",
                 "reset request must contain token, backend workers, and heartbeat lease values / "
-                "重置请求必须包含令牌、后端工作线程数与心跳租约参数",
+                "",
             )
         supplied_token = message.payload["token"]
         backend_worker_count = message.payload["backend_worker_count"]
@@ -790,7 +698,7 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_backend_worker_count",
-                "backend worker count must be positive / 后端工作线程数必须为正数",
+                "backend worker count must be positive / ",
             )
         if (
             isinstance(heartbeat_interval_seconds, bool)
@@ -806,7 +714,7 @@ class AggregationServerService:
                 400,
                 "invalid_heartbeat_lease",
                 "heartbeat timeout must be finite, positive, and exceed its interval / "
-                "心跳超时必须为有限正数且大于发送周期",
+                "",
             )
         if (
             not isinstance(supplied_token, str)
@@ -817,12 +725,12 @@ class AggregationServerService:
             raise RequestRejected(
                 403,
                 "evaluation_reset_forbidden",
-                "evaluation reset is disabled or the token is invalid / 实验重置未启用或令牌无效",
+                "evaluation reset is disabled or the token is invalid / ",
             )
         # The evaluator changes this only at a destructive, token-protected,
         # case boundary. It separates a normal long GPT-training lease from the
-        # deliberately short dropout-recovery lease. 评估器仅在受令牌保护的破坏性
-        # 用例边界修改该值，从而分离正常长时 GPT 训练租约和专门的短时掉线恢复租约。
+        # deliberately short dropout-recovery lease.
+        
         self._evaluation_reset_callback(
             backend_worker_count,
             float(heartbeat_interval_seconds),
@@ -840,18 +748,7 @@ class AggregationServerService:
         )
 
     def configure_evaluation_lease(self, message: WireMessage) -> WireMessage:
-        """Change only the lease of a dedicated experiment without resetting state.
-
-        仅修改专用实验的租约，不重置任何状态。
-
-        A training-dropout measurement must finish OPRF, label registration, and
-        CAS under the normal long lease before it activates a short failure
-        lease.  Resetting here would erase the exact task ownership that the
-        measurement must recover, so this route changes no index, SID, model,
-        or round state. 训练掉线测量必须先在正常长租约下完成 OPRF、标签登记和
-        CAS，再启用短故障租约。此处若重置会抹除待恢复的精确任务所有权，因此该
-        路由不会修改索引、SID、模型或轮次状态。
-        """
+        'Change only the lease of a dedicated experiment without resetting state.\n        A training-dropout measurement must finish OPRF, label registration, and\n        CAS under the normal long lease before it activates a short failure\n        lease.  Resetting here would erase the exact task ownership that the\n        measurement must recover, so this route changes no index, SID, model\n        or round state.\n        CAS'
         if message.message_type != AS_EVALUATION_LEASE_REQUEST or set(message.payload) != {
             "token", "heartbeat_timeout_seconds",
         }:
@@ -859,7 +756,7 @@ class AggregationServerService:
                 400,
                 "invalid_evaluation_lease_request",
                 "lease request must contain token and heartbeat timeout / "
-                "租约请求必须包含令牌和心跳超时",
+                "",
             )
         supplied_token = message.payload["token"]
         heartbeat_timeout_seconds = message.payload["heartbeat_timeout_seconds"]
@@ -873,7 +770,7 @@ class AggregationServerService:
                 400,
                 "invalid_heartbeat_lease",
                 "heartbeat timeout must be finite and exceed its interval / "
-                "心跳超时必须为有限数且大于发送周期",
+                "",
             )
         if (
             not isinstance(supplied_token, str)
@@ -884,17 +781,17 @@ class AggregationServerService:
                 403,
                 "evaluation_lease_forbidden",
                 "evaluation lease control is disabled or the token is invalid / "
-                "实验租约控制未启用或令牌无效",
+                "",
             )
         with self._lock:
             # The lease switch is one atomic server-side event. Refresh every
             # currently online SID at the same instant before installing the
             # shorter timeout; otherwise the evaluator has to create a burst
             # of client heartbeats and an otherwise healthy SID can expire
-            # between the last refresh and this control request. 租约切换是一次
-            # 原子的服务端事件。在安装更短超时前，以同一时刻刷新全部在线 SID；
-            # 否则评估器必须制造客户端心跳突发，并且健康 SID 可能在最后一次刷新与
-            # 本控制请求之间被错误判定为超时。
+            # between the last refresh and this control request.
+            
+            
+            
             refreshed_at = self._clock()
             for session in self._sessions_by_sid.values():
                 if session.online:
@@ -910,10 +807,7 @@ class AggregationServerService:
         )
 
     def _clear_evaluation_state(self) -> None:
-        """Clear service state while the entity owns an exclusive reset boundary.
-
-        在实体持有独占重置边界时清除服务状态。
-        """
+        'Clear service state while the entity owns an exclusive reset boundary.'
         self._sessions_by_sid.clear()
         self._sid_by_client_id.clear()
         self._offline_detected_at.clear()
@@ -929,10 +823,7 @@ class AggregationServerService:
 
     @staticmethod
     def _server_resources() -> dict[str, object]:
-        """Return this AS process's current resource observation when available.
-
-        可用时返回当前 AS 进程的资源观测值。
-        """
+        "Return this AS process's current resource observation when available."
         try:
             import os
             import psutil
@@ -947,10 +838,7 @@ class AggregationServerService:
             return {"status": "unavailable", "reason": type(error).__name__}
 
     def _advance_to_next_round(self, completed_round: int) -> None:
-        """Retain successful trainers, reset index state, and enable heartbeats.
-
-        保留成功训练者、重置索引状态，并启用心跳下发。
-        """
+        'Retain successful trainers, reset index state, and enable heartbeats.'
         for task_id in self.index.all_task_ids():
             snapshot = self.index.snapshot(task_id)
             if snapshot.state == TaskState.COMMITTED and snapshot.trainer:
@@ -962,10 +850,7 @@ class AggregationServerService:
         self._round_dispatch_sealed = False
 
     def _append_model_chunk(self, message: WireMessage) -> WireMessage:
-        """Decode and persist one ordered bounded base64 checkpoint chunk.
-
-        解码并持久化一个有序且有界的 Base64 检查点分块。
-        """
+        'Decode and persist one ordered bounded base64 checkpoint chunk.'
         sid, round_id, update_id, total_bytes, sha256, offset, encoded_chunk = (
             self._model_chunk_payload(message.payload)
         )
@@ -976,19 +861,19 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_model_chunk",
-                "chunk must be valid base64 / 分块必须是有效 Base64",
+                "chunk must be valid base64 /  Base64",
             ) from error
         if len(chunk) > MAX_MODEL_CHUNK_BYTES:
             raise RequestRejected(
                 413,
                 "model_chunk_too_large",
-                "decoded model chunk exceeds limit / 解码后的模型分块超过上限",
+                "decoded model chunk exceeds limit / ",
             )
         if total_bytes > self.model_update_store.max_update_bytes:
             raise RequestRejected(
                 413,
                 "model_update_too_large",
-                "model update exceeds configured limit / 模型更新超过配置上限",
+                "model update exceeds configured limit / ",
             )
         try:
             received_bytes = self.model_update_store.append_chunk(
@@ -1014,10 +899,7 @@ class AggregationServerService:
         )
 
     def _finalize_model_update(self, message: WireMessage) -> WireMessage:
-        """Publish one verified update and commit all tasks trained by its SID.
-
-        发布一个经验证的更新，并提交其 SID 训练的全部任务。
-        """
+        'Publish one verified update and commit all tasks trained by its SID.'
         sid, round_id, update_id, total_bytes, sha256, sample_count, task_ids = (
             self._model_finalize_payload(message.payload)
         )
@@ -1035,7 +917,7 @@ class AggregationServerService:
                         409,
                         "replacement_update_drops_committed_tasks",
                         "replacement update must retain every previously committed task / "
-                        "替换更新必须保留所有已提交任务",
+                        "",
                     )
                 replacement_task_ids = submitted_ids.difference(previous_ids)
             for task_id in task_ids:
@@ -1057,13 +939,13 @@ class AggregationServerService:
                     # trained protected labels have already been safely taken
                     # over.  It receives only protected labels, task IDs, and
                     # DEDUP instructions; another client's identity is never
-                    # exposed. 被拒绝客户端必须获知其原训练标签中哪些已被安全接管；
-                    # 响应仅包含受保护标签、任务 ID 与 DEDUP 指令，绝不暴露其他客户端身份。
+                    # exposed.
+                    
                     raise RequestRejected(
                         409,
                         "task_not_pending_for_sid",
                         "all tasks must remain PENDING for the submitting SID / "
-                        "所有任务必须仍由提交 SID 处于 PENDING 状态",
+                        " SID  PENDING ",
                         {
                             "dedup_instructions": self._lost_training_dedup_instructions(
                                 sid,
@@ -1088,15 +970,15 @@ class AggregationServerService:
                         409,
                         "task_commit_failed",
                         "task was no longer pending for the submitting SID / "
-                        "任务不再由提交 SID 处于挂起状态",
+                        " SID ",
                     )
             # FedAvg weights are authoritative AS state, not a client-declared
             # dataset size.  A replacement update retains earlier COMMITTED
             # tasks, while a first update has just committed its PENDING tasks;
             # both cases are counted from the state table after this transition.
-            # FedAvg 权重以 AS 状态表为准，而非客户端声明的数据集大小。替换更新会
-            # 保留先前的 COMMITTED 任务，首次更新则刚刚提交其 PENDING 任务；两种
-            # 情况均在上述状态转换后直接由状态表计数。
+            # FedAvg
+            
+            
             committed_sample_count = sum(
                 1
                 for task_id in self.index.all_task_ids()
@@ -1109,7 +991,7 @@ class AggregationServerService:
                     409,
                     "no_committed_tasks_for_sid",
                     "the update has no COMMITTED tasks for its SID / "
-                    "该更新没有属于其 SID 的 COMMITTED 任务",
+                    " SID  COMMITTED ",
                 )
             descriptor = ModelUpdateDescriptor(
                 round_id=round_id,
@@ -1129,18 +1011,7 @@ class AggregationServerService:
         submitting_sid: int,
         task_ids: Sequence[int],
     ) -> list[dict[str, object]]:
-        """Describe only labels already unusable by the rejected trainer.
-
-        仅描述对被拒绝训练者已不可用的标签。
-
-        A released ``EMPTY`` task is deliberately omitted: it has not yet been
-        taken over, so the reconnecting client may legally win a later CAS. A
-        ``PENDING`` task belongs in this payload only when another currently
-        online SID owns it. ``COMMITTED`` work is also immutable and therefore
-        returned as DEDUP. 已释放的 ``EMPTY`` 任务被刻意省略：其尚未被接管，重连
-        客户端仍可在之后合法赢得 CAS。``PENDING`` 任务仅在另一在线 SID 拥有时才加入
-        该载荷；``COMMITTED`` 工作同样不可变，因此也以 DEDUP 返回。
-        """
+        'Describe only labels already unusable by the rejected trainer.\n        A released ``EMPTY`` task is deliberately omitted: it has not yet been\n        taken over, so the reconnecting client may legally win a later CAS. A\n        ``PENDING`` task belongs in this payload only when another currently\n        online SID owns it. ``COMMITTED`` work is also immutable and therefore\n        returned as DEDUP.'
         instructions: list[dict[str, object]] = []
         for task_id in task_ids:
             snapshot = self.index.snapshot(task_id)
@@ -1165,17 +1036,14 @@ class AggregationServerService:
         return instructions
 
     def _is_online_sid(self, sid: int) -> bool:
-        """Return liveness without revealing session data outside this service.
-
-        在不向服务外泄露会话数据的情况下返回存活状态。
-        """
+        'Return liveness without revealing session data outside this service.'
         with self._lock:
             session = self._sessions_by_sid.get(sid)
             return session is not None and session.online
 
     @staticmethod
     def _finalize_response(descriptor: ModelUpdateDescriptor, request_id: str) -> WireMessage:
-        """Return an idempotent model-update acknowledgement. / 返回幂等的模型更新确认。"""
+        'Return an idempotent model-update acknowledgement.'
         return WireMessage.create(
             AS_MODEL_FINALIZE_RESPONSE,
             {
@@ -1192,36 +1060,25 @@ class AggregationServerService:
         self,
         sid: int,
         *,
-        operation: tuple[str, str] = ("uploading", "上传"),
+        operation: tuple[str, str] = ("uploading", ""),
     ) -> None:
-        """Ensure the requested operation is attributed to an online SID.
-
-        确保请求操作仅归属于在线且已注册的 SID。
-
-        ``operation`` contains English and Chinese response text only; it makes a rejected immutable
-        download diagnosable without changing the shared SID state machine.
-        ``operation`` 仅用于响应文本；它使不可变下载的拒绝可诊断，而不改变共享 SID
-        状态机。
-        """
+        'Ensure the requested operation is attributed to an online SID.\n        ``operation`` contains English and Chinese response text only; it makes a rejected immutable\n        download diagnosable without changing the shared SID state machine.\n        ``operation``'
         operation_english, operation_chinese = operation
         self.expire_sessions()
         with self._lock:
             session = self._sessions_by_sid.get(sid)
             if session is None:
-                raise RequestRejected(404, "unknown_sid", "SID has not been registered / SID 尚未注册")
+                raise RequestRejected(404, "unknown_sid", "SID has not been registered / SID ")
             if not session.online:
                 raise RequestRejected(
                     409,
                     "sid_offline",
                     f"offline SID must reconnect before {operation_english} / "
-                    f"离线 SID 必须重连后才能{operation_chinese}",
+                    f" SID {operation_chinese}",
                 )
 
     def expire_sessions(self) -> tuple[int, ...]:
-        """Mark timers older than tau as offline and return newly expired SIDs.
-
-        将超过 tau 的计时器标记为离线，并返回新超时的 SID。
-        """
+        'Mark timers older than tau as offline and return newly expired SIDs.'
         now = self._clock()
         expired: list[int] = []
         with self._lock:
@@ -1239,17 +1096,7 @@ class AggregationServerService:
         return tuple(expired)
 
     def _release_dropped_trainer_tasks(self, sid: int) -> None:
-        """Release one dropped SID's tasks through index or scan recovery.
-
-        通过倒排索引或扫描恢复路径释放一个掉线 SID 的任务。
-
-        ``scan`` is the explicit ``w/o inverse index`` ablation: it deliberately
-        traverses every task and preserves the same state semantics. The native
-        inverse table remains allocated for ABI compatibility but is not read by
-        this recovery path. ``scan`` 是显式的“去除倒排索引”消融：它刻意遍历每个任务，
-        同时保留完全相同的状态语义。为 ABI 兼容性原生倒排表仍会被分配，但该恢复路径
-        不读取它。
-        """
+        "Release one dropped SID's tasks through index or scan recovery.\n        ``scan`` is the explicit ``w/o inverse index`` ablation: it deliberately\n        traverses every task and preserves the same state semantics. The native\n        inverse table remains allocated for ABI compatibility but is not read by\n        this recovery path. ``scan``"
         task_ids = (
             self.index.client_tasks(sid)
             if self.recovery_index_mode == "inverse"
@@ -1268,10 +1115,7 @@ class AggregationServerService:
                         self._round_dispatch_enabled = True
 
     def session_snapshot(self, sid: int) -> ClientSessionSnapshot | None:
-        """Return one current session snapshot after applying timeout detection.
-
-        应用超时检测后返回一个当前会话快照。
-        """
+        'Return one current session snapshot after applying timeout detection.'
         self.expire_sessions()
         with self._lock:
             session = self._sessions_by_sid.get(sid)
@@ -1279,43 +1123,37 @@ class AggregationServerService:
 
     @staticmethod
     def _client_id_from_payload(payload: Mapping[str, Any]) -> str:
-        """Validate the one-field client registration payload.
-
-        验证仅含一个字段的客户端注册载荷。
-        """
+        'Validate the one-field client registration payload.'
         if set(payload) != {"client_id"}:
             raise RequestRejected(
                 400,
                 "invalid_registration_payload",
-                "payload must contain only client_id / 载荷只能包含 client_id",
+                "payload must contain only client_id /  client_id",
             )
         client_id = payload["client_id"]
         if not isinstance(client_id, str) or not 1 <= len(client_id) <= 128:
             raise RequestRejected(
                 400,
                 "invalid_client_id",
-                "client_id must contain 1..128 characters / client_id 必须包含 1..128 个字符",
+                "client_id must contain 1..128 characters / client_id  1..128 ",
             )
         return client_id
 
     @staticmethod
     def _sid_from_payload(payload: Mapping[str, Any]) -> int:
-        """Validate the one-field heartbeat payload.
-
-        验证仅含一个字段的心跳载荷。
-        """
+        'Validate the one-field heartbeat payload.'
         if set(payload) != {"sid"}:
             raise RequestRejected(
                 400,
                 "invalid_heartbeat_payload",
-                "payload must contain only sid / 载荷只能包含 sid",
+                "payload must contain only sid /  sid",
             )
         sid = payload["sid"]
         if isinstance(sid, bool) or not isinstance(sid, int) or sid < 1:
             raise RequestRejected(
                 400,
                 "invalid_sid",
-                "sid must be a positive integer / sid 必须是正整数",
+                "sid must be a positive integer / sid ",
             )
         return sid
 
@@ -1323,22 +1161,19 @@ class AggregationServerService:
     def _label_submission_from_payload(
         payload: Mapping[str, Any],
     ) -> tuple[int, int, tuple[str, ...]]:
-        """Validate a complete SID, round, and protected-label-set submission.
-
-        验证完整的 SID、轮次与受保护标签集合提交。
-        """
+        'Validate a complete SID, round, and protected-label-set submission.'
         if set(payload) != {"sid", "round", "protected_labels"}:
             raise RequestRejected(
                 400,
                 "invalid_label_payload",
                 "payload must contain sid, round, and protected_labels / "
-                "载荷必须包含 sid、round 和 protected_labels",
+                " sidround  protected_labels",
             )
         sid = payload["sid"]
         created_round = payload["round"]
         protected_labels = payload["protected_labels"]
         if isinstance(sid, bool) or not isinstance(sid, int) or sid < 1:
-            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / sid 必须是正整数")
+            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / sid ")
         if (
             isinstance(created_round, bool)
             or not isinstance(created_round, int)
@@ -1347,7 +1182,7 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_round",
-                "round must fit uint32 / round 必须适配 uint32",
+                "round must fit uint32 / round  uint32",
             )
         if (
             not isinstance(protected_labels, Sequence)
@@ -1358,21 +1193,21 @@ class AggregationServerService:
                 400,
                 "invalid_label_batch",
                 "protected_labels must be a non-empty bounded array / "
-                "protected_labels 必须为非空且有上限的数组",
+                "protected_labels ",
             )
         labels = tuple(protected_labels)
         if any(not isinstance(label, str) for label in labels):
             raise RequestRejected(
                 400,
                 "invalid_protected_label",
-                "every protected label must be a string / 每个受保护标签必须是字符串",
+                "every protected label must be a string / ",
             )
         if len(set(labels)) != len(labels):
             raise RequestRejected(
                 400,
                 "duplicate_protected_label",
                 "protected-label set must not contain duplicates / "
-                "受保护标签集合不得包含重复值",
+                "",
             )
         try:
             for label in labels:
@@ -1387,21 +1222,18 @@ class AggregationServerService:
 
     @staticmethod
     def _claim_payload_from_message(payload: Mapping[str, Any]) -> tuple[int, tuple[str, ...]]:
-        """Validate one claim request without re-registering its label set.
-
-        验证一个任务抢占请求，不重复登记其中的标签集合。
-        """
+        'Validate one claim request without re-registering its label set.'
         if set(payload) != {"sid", "protected_labels"}:
             raise RequestRejected(
                 400,
                 "invalid_claim_payload",
                 "payload must contain sid and protected_labels / "
-                "载荷必须包含 sid 和 protected_labels",
+                " sid  protected_labels",
             )
         sid = payload["sid"]
         protected_labels = payload["protected_labels"]
         if isinstance(sid, bool) or not isinstance(sid, int) or sid < 1:
-            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / sid 必须是正整数")
+            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / sid ")
         labels = AggregationServerService._validated_protected_label_set(protected_labels)
         return sid, labels
 
@@ -1409,10 +1241,7 @@ class AggregationServerService:
     def _model_chunk_payload(
         payload: Mapping[str, Any],
     ) -> tuple[int, int, str, int, str, int, str]:
-        """Validate metadata for one bounded base64 model-update chunk.
-
-        验证一个有界 Base64 模型更新分块的元数据。
-        """
+        'Validate metadata for one bounded base64 model-update chunk.'
         expected_fields = {
             "sid",
             "round",
@@ -1426,7 +1255,7 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_model_chunk_payload",
-                "model chunk payload fields are invalid / 模型分块载荷字段无效",
+                "model chunk payload fields are invalid / ",
             )
         sid, round_id, update_id, total_bytes, sha256 = (
             AggregationServerService._upload_identity_from_payload(payload)
@@ -1437,13 +1266,13 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_model_offset",
-                "offset must be non-negative / 偏移量必须非负",
+                "offset must be non-negative / ",
             )
         if not isinstance(encoded_chunk, str) or not encoded_chunk:
             raise RequestRejected(
                 400,
                 "invalid_model_chunk",
-                "chunk_base64 must be non-empty / chunk_base64 必须非空",
+                "chunk_base64 must be non-empty / chunk_base64 ",
             )
         return sid, round_id, update_id, total_bytes, sha256, offset, encoded_chunk
 
@@ -1451,10 +1280,7 @@ class AggregationServerService:
     def _model_finalize_payload(
         payload: Mapping[str, Any],
     ) -> tuple[int, int, str, int, str, int, tuple[int, ...]]:
-        """Validate a completed update before task commits become visible.
-
-        在任务提交变得可见前，验证一个完成的更新。
-        """
+        'Validate a completed update before task commits become visible.'
         expected_fields = {
             "sid",
             "round",
@@ -1468,7 +1294,7 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_model_finalize_payload",
-                "model finalize payload fields are invalid / 模型完成载荷字段无效",
+                "model finalize payload fields are invalid / ",
             )
         sid, round_id, update_id, total_bytes, sha256 = (
             AggregationServerService._upload_identity_from_payload(payload)
@@ -1479,13 +1305,13 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_sample_count",
-                "sample_count must be positive / 样本数必须为正数",
+                "sample_count must be positive / ",
             )
         if not isinstance(task_ids, list) or not task_ids:
             raise RequestRejected(
                 400,
                 "invalid_task_ids",
-                "task_ids must be a non-empty list / task_ids 必须为非空列表",
+                "task_ids must be a non-empty list / task_ids ",
             )
         if any(
             isinstance(task_id, bool) or not isinstance(task_id, int) or task_id < 0
@@ -1495,31 +1321,28 @@ class AggregationServerService:
                 400,
                 "invalid_task_ids",
                 "task_ids must contain non-negative integers / "
-                "task_ids 必须包含非负整数",
+                "task_ids ",
             )
         if len(set(task_ids)) != len(task_ids):
             raise RequestRejected(
                 400,
                 "duplicate_task_id",
-                "task_ids must not repeat / task_ids 不得重复",
+                "task_ids must not repeat / task_ids ",
             )
         return sid, round_id, update_id, total_bytes, sha256, sample_count, tuple(task_ids)
 
     @staticmethod
     def _upload_identity_from_payload(payload: Mapping[str, Any]) -> tuple[int, int, str, int, str]:
-        """Validate common safe identifiers for model-update filesystem storage.
-
-        验证模型更新文件系统存储共用的安全标识。
-        """
+        'Validate common safe identifiers for model-update filesystem storage.'
         sid = payload["sid"]
         round_id = payload["round"]
         update_id = payload["update_id"]
         total_bytes = payload["total_bytes"]
         sha256 = payload["sha256"]
         if isinstance(sid, bool) or not isinstance(sid, int) or sid < 1:
-            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / SID 必须是正整数")
+            raise RequestRejected(400, "invalid_sid", "sid must be a positive integer / SID ")
         if isinstance(round_id, bool) or not isinstance(round_id, int) or round_id < 0:
-            raise RequestRejected(400, "invalid_round", "round must be non-negative / 轮次必须非负")
+            raise RequestRejected(400, "invalid_round", "round must be non-negative / ")
         if (
             not isinstance(update_id, str)
             or len(update_id) != 32
@@ -1529,13 +1352,13 @@ class AggregationServerService:
                 400,
                 "invalid_update_id",
                 "update_id must be 32 lowercase hex characters / "
-                "update_id 必须为 32 位小写十六进制字符",
+                "update_id  32 ",
             )
         if isinstance(total_bytes, bool) or not isinstance(total_bytes, int) or total_bytes < 1:
             raise RequestRejected(
                 400,
                 "invalid_total_bytes",
-                "total_bytes must be positive / 总字节数必须为正数",
+                "total_bytes must be positive / ",
             )
         if (
             not isinstance(sha256, str)
@@ -1546,31 +1369,28 @@ class AggregationServerService:
                 400,
                 "invalid_sha256",
                 "sha256 must be 64 lowercase hex characters / "
-                "sha256 必须为 64 位小写十六进制字符",
+                "sha256  64 ",
             )
         return sid, round_id, update_id, total_bytes, sha256
 
     @staticmethod
     def _aggregate_payload(payload: Mapping[str, Any]) -> tuple[int, tuple[int, ...]]:
-        """Validate an explicit FedAvg participant set for one round.
-
-        验证一个轮次显式指定的 FedAvg 参与者集合。
-        """
+        'Validate an explicit FedAvg participant set for one round.'
         if set(payload) != {"round", "expected_sids"}:
             raise RequestRejected(
                 400,
                 "invalid_aggregate_payload",
-                "aggregate payload fields are invalid / 聚合载荷字段无效",
+                "aggregate payload fields are invalid / ",
             )
         round_id = payload["round"]
         expected_sids = payload["expected_sids"]
         if isinstance(round_id, bool) or not isinstance(round_id, int) or round_id < 0:
-            raise RequestRejected(400, "invalid_round", "round must be non-negative / 轮次必须非负")
+            raise RequestRejected(400, "invalid_round", "round must be non-negative / ")
         if not isinstance(expected_sids, list) or not expected_sids:
             raise RequestRejected(
                 400,
                 "invalid_expected_sids",
-                "expected_sids must be non-empty / expected_sids 必须非空",
+                "expected_sids must be non-empty / expected_sids ",
             )
         if any(
             isinstance(sid, bool) or not isinstance(sid, int) or sid < 1
@@ -1580,38 +1400,35 @@ class AggregationServerService:
                 400,
                 "invalid_expected_sids",
                 "expected_sids must be positive integers / "
-                "expected_sids 必须为正整数",
+                "expected_sids ",
             )
         if len(set(expected_sids)) != len(expected_sids):
             raise RequestRejected(
                 400,
                 "duplicate_expected_sid",
-                "expected_sids must not repeat / expected_sids 不得重复",
+                "expected_sids must not repeat / expected_sids ",
             )
         return round_id, tuple(expected_sids)
 
     @staticmethod
     def _global_model_chunk_payload(payload: Mapping[str, Any]) -> tuple[int, int, int, int]:
-        """Validate one registered client's bounded global-model read request.
-
-        验证一个已注册客户端的有界全局模型读取请求。
-        """
+        "Validate one registered client's bounded global-model read request."
         if set(payload) != {"sid", "round", "offset", "max_bytes"}:
             raise RequestRejected(
                 400,
                 "invalid_global_model_payload",
-                "global model payload fields are invalid / 全局模型载荷字段无效",
+                "global model payload fields are invalid / ",
             )
         sid = payload["sid"]
         round_id = payload["round"]
         offset = payload["offset"]
         max_bytes = payload["max_bytes"]
         if isinstance(sid, bool) or not isinstance(sid, int) or sid < 1:
-            raise RequestRejected(400, "invalid_sid", "sid must be positive / SID 必须为正数")
+            raise RequestRejected(400, "invalid_sid", "sid must be positive / SID ")
         if isinstance(round_id, bool) or not isinstance(round_id, int) or round_id < 0:
-            raise RequestRejected(400, "invalid_round", "round must be non-negative / 轮次必须非负")
+            raise RequestRejected(400, "invalid_round", "round must be non-negative / ")
         if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
-            raise RequestRejected(400, "invalid_offset", "offset must be non-negative / 偏移量必须非负")
+            raise RequestRejected(400, "invalid_offset", "offset must be non-negative / ")
         if (
             isinstance(max_bytes, bool)
             or not isinstance(max_bytes, int)
@@ -1620,31 +1437,28 @@ class AggregationServerService:
             raise RequestRejected(
                 400,
                 "invalid_max_bytes",
-                "max_bytes is outside the chunk bound / max_bytes 超出分块上限",
+                "max_bytes is outside the chunk bound / max_bytes ",
             )
         return sid, round_id, offset, max_bytes
 
     @staticmethod
     def _round_configuration_payload(payload: Mapping[str, Any]) -> tuple[int, tuple[int, ...]]:
-        """Validate a fixed FedAvg roster for one not-yet-started round.
-
-        验证一个尚未开始轮次的固定 FedAvg 名册。
-        """
+        'Validate a fixed FedAvg roster for one not-yet-started round.'
         if set(payload) != {"round", "participant_sids"}:
             raise RequestRejected(
                 400,
                 "invalid_round_configuration",
-                "round configuration fields are invalid / 轮次配置字段无效",
+                "round configuration fields are invalid / ",
             )
         round_id = payload["round"]
         participant_sids = payload["participant_sids"]
         if isinstance(round_id, bool) or not isinstance(round_id, int) or round_id < 0:
-            raise RequestRejected(400, "invalid_round", "round must be non-negative / 轮次必须非负")
+            raise RequestRejected(400, "invalid_round", "round must be non-negative / ")
         if not isinstance(participant_sids, list) or not participant_sids:
             raise RequestRejected(
                 400,
                 "invalid_round_participants",
-                "participant_sids must be non-empty / participant_sids 必须非空",
+                "participant_sids must be non-empty / participant_sids ",
             )
         if any(
             isinstance(sid, bool) or not isinstance(sid, int) or sid < 1
@@ -1654,16 +1468,13 @@ class AggregationServerService:
                 400,
                 "invalid_round_participants",
                 "participant_sids must be unique positive integers / "
-                "participant_sids 必须为唯一正整数",
+                "participant_sids ",
             )
         return round_id, tuple(participant_sids)
 
     @staticmethod
     def _validated_protected_label_set(protected_labels: Any) -> tuple[str, ...]:
-        """Validate one bounded, canonical, duplicate-free OPRF label set.
-
-        验证一个有界、规范且无重复的 OPRF 标签集合。
-        """
+        'Validate one bounded, canonical, duplicate-free OPRF label set.'
         if (
             not isinstance(protected_labels, Sequence)
             or isinstance(protected_labels, (str, bytes))
@@ -1673,21 +1484,21 @@ class AggregationServerService:
                 400,
                 "invalid_label_batch",
                 "protected_labels must be a non-empty bounded array / "
-                "protected_labels 必须为非空且有上限的数组",
+                "protected_labels ",
             )
         labels = tuple(protected_labels)
         if any(not isinstance(label, str) for label in labels):
             raise RequestRejected(
                 400,
                 "invalid_protected_label",
-                "every protected label must be a string / 每个受保护标签必须是字符串",
+                "every protected label must be a string / ",
             )
         if len(set(labels)) != len(labels):
             raise RequestRejected(
                 400,
                 "duplicate_protected_label",
                 "protected-label set must not contain duplicates / "
-                "受保护标签集合不得包含重复值",
+                "",
             )
         try:
             for label in labels:
@@ -1703,10 +1514,7 @@ class AggregationServerService:
 
 @dataclass(frozen=True, slots=True)
 class AggregationServerConfig:
-    """HTTP deployment and native-index sizing parameters for the AS.
-
-    AS 的 HTTP 部署参数与原生索引容量参数。
-    """
+    'HTTP deployment and native-index sizing parameters for the AS.\n    AS'
 
     capacity: int
     max_clients: int
@@ -1726,35 +1534,26 @@ class AggregationServerConfig:
     evaluation_reset_token: str | None = None
 
     def __post_init__(self) -> None:
-        """Reject invalid resource and heartbeat configuration before binding.
-
-        绑定前拒绝无效的资源与心跳配置。
-        """
+        'Reject invalid resource and heartbeat configuration before binding.'
         if not self.host:
-            raise ValueError("AS host must not be empty / AS 主机不得为空")
+            raise ValueError("AS host must not be empty / AS ")
         if not 0 <= self.port <= 65535:
-            raise ValueError("AS port must be in 0..65535 / AS 端口必须位于 0..65535")
+            raise ValueError("AS port must be in 0..65535 / AS  0..65535")
         if self.max_model_update_bytes < 1:
-            raise ValueError("max_model_update_bytes must be positive / 最大模型更新字节数必须为正数")
+            raise ValueError("max_model_update_bytes must be positive / ")
         if self.backend_worker_count < 1:
-            raise ValueError("backend_worker_count must be positive / AS 后端工作线程数必须为正数")
+            raise ValueError("backend_worker_count must be positive / AS ")
         if self.claim_mode not in {"cas", "mutex"}:
-            raise ValueError("claim_mode must be cas or mutex / 抢占模式必须为 cas 或 mutex")
+            raise ValueError("claim_mode must be cas or mutex /  cas  mutex")
         if self.recovery_index_mode not in {"inverse", "scan"}:
-            raise ValueError("recovery_index_mode must be inverse or scan / 恢复索引模式必须为 inverse 或 scan")
+            raise ValueError("recovery_index_mode must be inverse or scan /  inverse  scan")
 
 
 class AggregationServerEntity:
-    """Run AS HTTP session endpoints while owning the compatible native index.
-
-    运行 AS HTTP 会话端点，同时持有兼容的原生索引。
-    """
+    'Run AS HTTP session endpoints while owning the compatible native index.'
 
     def __init__(self, config: AggregationServerConfig) -> None:
-        """Allocate the native index and bind AS HTTP without starting it.
-
-        分配原生索引并绑定 AS HTTP，但不启动服务。
-        """
+        'Allocate the native index and bind AS HTTP without starting it.'
         self.config = config
         self.index = NativeIndex(
             config.capacity,
@@ -1791,21 +1590,18 @@ class AggregationServerEntity:
 
     @property
     def base_url(self) -> str:
-        """Return the HTTP AS endpoint. / 返回 HTTP AS 端点。"""
+        'Return the HTTP AS endpoint.'
         return self._server.base_url
 
     @property
     def port(self) -> int:
-        """Return the actual AS port after binding. / 返回绑定后的实际 AS 端口。"""
+        'Return the actual AS port after binding.'
         return self._server.port
 
     def start(self) -> None:
-        """Start AS HTTP and its independent heartbeat timeout monitor.
-
-        启动 AS HTTP 以及独立的心跳超时监控器。
-        """
+        'Start AS HTTP and its independent heartbeat timeout monitor.'
         if self._closed:
-            raise RuntimeError("AS entity is closed / AS 实体已关闭")
+            raise RuntimeError("AS entity is closed / AS ")
         self._server.start()
         if self._monitor_thread is None:
             monitor_period = max(
@@ -1828,10 +1624,7 @@ class AggregationServerEntity:
         heartbeat_interval_seconds: float,
         heartbeat_timeout_seconds: float,
     ) -> None:
-        """Replace the complete native index only at an authorized idle boundary.
-
-        仅在已授权的空闲边界替换完整原生索引并配置下一用例的租约。
-        """
+        'Replace the complete native index only at an authorized idle boundary.'
         replacement = NativeIndex(
             self.config.capacity,
             self.config.max_clients,
@@ -1849,14 +1642,11 @@ class AggregationServerEntity:
         previous.close()
 
     def session_snapshot(self, sid: int) -> ClientSessionSnapshot | None:
-        """Return AS-observed liveness for one SID. / 返回 AS 观察到的一个 SID 的存活状态。"""
+        'Return AS-observed liveness for one SID.'
         return self.service.session_snapshot(sid)
 
     def close(self) -> None:
-        """Stop AS components and release the native index exactly once.
-
-        停止 AS 组件并恰好一次释放原生索引。
-        """
+        'Stop AS components and release the native index exactly once.'
         if self._closed:
             return
         self._monitor_stop.set()
@@ -1867,7 +1657,7 @@ class AggregationServerEntity:
         self._closed = True
 
     def __enter__(self) -> "AggregationServerEntity":
-        """Start the AS entity at context entry. / 上下文进入时启动 AS 实体。"""
+        'Start the AS entity at context entry.'
         self.start()
         return self
 
@@ -1877,13 +1667,10 @@ class AggregationServerEntity:
         exception: object,
         traceback: object,
     ) -> None:
-        """Close the AS entity at context exit. / 上下文退出时关闭 AS 实体。"""
+        'Close the AS entity at context exit.'
         self.close()
 
     def _monitor_sessions(self, monitor_period: float) -> None:
-        """Run timeout detection without interfering with request processing.
-
-        运行超时检测，且不干扰请求处理。
-        """
+        'Run timeout detection without interfering with request processing.'
         while not self._monitor_stop.wait(monitor_period):
             self.service.expire_sessions()

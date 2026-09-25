@@ -1,11 +1,11 @@
 // Native CAS and mutex claim microbenchmark for DwT-FL.
-// DwT-FL 的原生 CAS 与互斥锁抢占微基准。
+// DwT-FL
 //
 // This file is intentionally independent from HTTP, Python and OPRF. It
 // measures only state-transition throughput under a shared global mutex
 // control and the production-style atomic compare-and-swap implementation.
-// 本文件刻意独立于 HTTP、Python 和 OPRF；它仅测量共享全局互斥锁控制组与
-// 生产式原子比较交换实现下的状态迁移吞吐量。
+
+
 
 #include <atomic>
 #include <barrier>
@@ -30,7 +30,7 @@ namespace
     constexpr int kScenarioSharedHotset = 1;
 
     // A cache-line-aligned word prevents artificial false sharing between
-    // unrelated tasks. 一条缓存行对齐的状态字避免无关任务间的人为伪共享。
+    // unrelated tasks.
     struct alignas(64) TaskWord
     {
         std::atomic<std::uint64_t> state{0};
@@ -48,7 +48,7 @@ namespace
     }
 
     // Returns monotonic elapsed seconds while providing exact attempt and win
-    // counts. 返回单调时间秒数，并输出精确的尝试与成功次数。
+    // counts.
     double run_claims(
         int mode,
         int scenario,
@@ -77,9 +77,9 @@ namespace
 
         // The barrier completion records the start time before releasing any
         // worker. Its completion happens-before every released participant,
-        // so no claim can be omitted from the measured region. 屏障完成回调在
-        // 释放任何工作线程前记录起始时间；完成回调先行发生于每个被释放参与者，
-        // 因而不会遗漏任何一次抢占。
+        // so no claim can be omitted from the measured region.
+        
+        
         auto started = std::chrono::steady_clock::time_point{};
         std::barrier start_gate(
             static_cast<std::ptrdiff_t>(workers) + 1,
@@ -110,8 +110,8 @@ namespace
                     }
                     else
                     {
-                        // This is the pessimistic global-lock control. 这是一种
-                        // 悲观的全局锁控制组：即使任务不同也会被串行化。
+                        // This is the pessimistic global-lock control.
+                        
                         std::lock_guard<std::mutex> guard(global_mutex);
                         if (word.load(std::memory_order_relaxed) == 0)
                         {
@@ -143,7 +143,7 @@ namespace
 } // namespace
 
 // Return whether this platform provides lock-free 64-bit atomic state words.
-// 返回当前平台是否提供无锁的 64 位原子状态字。
+
 DBT_BENCH_EXPORT int dbt_claim_benchmark_is_lock_free()
 {
     std::atomic<std::uint64_t> word{0};
@@ -152,8 +152,8 @@ DBT_BENCH_EXPORT int dbt_claim_benchmark_is_lock_free()
 
 // Run one native claim benchmark. mode: 0 CAS, 1 global mutex; scenario:
 // 0 disjoint task ranges, 1 one shared hot task set.
-// 运行一次原生抢占基准。mode：0 为 CAS、1 为全局互斥锁；scenario：0 为互不
-// 重叠的任务范围、1 为共享热点任务集。
+
+
 DBT_BENCH_EXPORT double dbt_run_claim_benchmark(
     int mode,
     int scenario,

@@ -1,7 +1,4 @@
-"""Local, model-specific training tools kept outside DwT-FL protocol roles.
-
-与 DwT-FL 协议角色解耦的、本地且模型专用的训练工具。
-"""
+'Local, model-specific training tools kept outside DwT-FL protocol roles.'
 
 from .data import (
     PreparedDatasetManifest,
