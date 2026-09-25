@@ -1,0 +1,7 @@
+# Dependencies shared by servers and local experiment entrypoints.
+-r requirements.txt
+
+# Install the CPU or CUDA-specific PyTorch wheel selected for the local machine.
+torch>=2.2
+transformers>=4.46
+peft>=0.13

@@ -1,0 +1,15 @@
+# 本地运行结果，不应作为论文源代码提交 / Local run results are not source code.
+results/
+
+# KS 私钥只在部署主机生成，绝不提交 / KS private key is generated on its host only.
+secrets/
+
+# Python 解释器缓存 / Python interpreter caches.
+__pycache__/
+*.py[cod]
+
+# 虚拟环境和覆盖率产物 / Virtual environments and coverage outputs.
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/

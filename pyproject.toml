@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbt-fl-experiment"
+version = "0.1.0"
+description = "In-memory CAS-based DwT-FL experiment implementation"
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0", "numpy>=1.26", "requests>=2.31", "psutil>=5.9", "oblivious[rbcl]>=7.0"]
+
+[project.optional-dependencies]
+# AS/KS keep their standard-library transport path when this optional extra is absent.
+# AS/KS 在未安装此可选依赖时仍保持标准库传输路径。
+training = ["safetensors>=0.5", "torch>=2.2", "transformers>=4.46"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dbtfl = ["native/*.dll", "native/*.so"]
